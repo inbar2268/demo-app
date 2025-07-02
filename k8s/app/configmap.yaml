@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-client
+data:
+  PORT: "80"
+  REACT_APP_API_URL: /api
+  REACT_APP_ENV: development
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-server
+data:
+  PORT: "5000"
+  FRONTEND_URL: http://svc-client.demo-nodejs.svc.cluster.local:80
+  MONGODB_URI: mongodb://mongodb-0.mongodb-service.demo-nodejs.svc.cluster.local:27017,mongodb-1.mongodb-service.demo-nodejs.svc.cluster.local:27017,mongodb-2.mongodb-service.demo-nodejs.svc.cluster.local:27017/demo?replicaSet=rs0
+  NODE_ENV: development
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-nginx-config
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+
+      location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files $uri /index.html;
+      }
+
+      location /api/ {
+        proxy_pass http://svc-server.demo-nodejs.svc.cluster.local:5000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+      }
+    }
+
+

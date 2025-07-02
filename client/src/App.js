@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE = window.RUNTIME_CONFIG?.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export default function App() {
   const [users, setUsers] = useState([]);
