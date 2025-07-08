@@ -10,7 +10,7 @@ configMaps:
     REACT_APP_API_URL: "/api"
   # Backend environment variables  
   backendEnv:
-    MONGODB_URI: "mongodb://app-user:demo12@demo-mongodb-0.demo-mongodb-svc.demo-nodejs.svc.cluster.local:27017,demo-mongodb-1.demo-mongodb-svc.demo-nodejs.svc.cluster.local:27017,demo-mongodb-2.demo-mongodb-svc.demo-nodejs.svc.cluster.local:27017/demo?replicaSet=demo-mongodb&ssl=false"
+    MONGODB_URI: ""
 frontend:
   labels:
     app: client
