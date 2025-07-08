@@ -38,6 +38,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
           
       - name: Set IMAGE_TAG and IMAGE_NAME
+        id: set-tag
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
