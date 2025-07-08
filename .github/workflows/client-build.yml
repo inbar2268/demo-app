@@ -37,9 +37,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
           
-      - name: Set IMAGE_TAG
-        env:
-          IMAGE_NAME: ${{ needs.build.outputs.image-name }}
+      - name: Set IMAGE_TAG and IMAGE_NAME
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
@@ -85,6 +83,6 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add ./helm/demo-app/values.yaml
-          git diff --staged --quiet || git commit -m "Update client image tag to $IMAGE_TAG"
+          git diff --staged --quiet || git commit -m "Update client image $IMAGE_NAME:$IMAGE_TAG"
           git push
           
