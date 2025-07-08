@@ -85,6 +85,9 @@ jobs:
           yq eval '.frontend.image.repository = strenv(IMAGE_NAME)' -i helm/demo-app/values.yaml
 
       - name: Commit changes
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_NAME: ${{ needs.build.outputs.image-name }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
