@@ -38,20 +38,48 @@ jobs:
             -f  helm/mongodb-community/values.yaml -f helm/mongodb-community/secrets.enc.yaml 
 
 
-  # trigger-app-deploy:
-  #   runs-on: self-hosted
-  #   needs: deploy-mongo
+  trigger-app-deploy:
+    runs-on: self-hosted
+    needs: deploy-mongo
 
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-  #     - name: Trigger application deployment
-  #       uses: peter-evans/repository-dispatch@v3
-  #       with:
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-  #         event-type: deploy
-  #         client_payload: |
-  #           {
-  #             "triggered_by": "mongodb-deploy"
-  #           }
+      - name: Wait for MongoDB Secret
+        run: |
+          SECRET_NAME=$(yq eval '.fullnameOverride' values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .name' values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .db' values.yaml)
+          NAMESPACE=demo-nodejs
+          TIMEOUT=60  # seconds
+          ELAPSED=0
+          INTERVAL=3
+
+          while ! kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" >/dev/null 2>&1; do
+            if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+              echo "Timed out waiting for secret '$SECRET_NAME'"
+              exit 1
+            fi
+            sleep "$INTERVAL"
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          echo "Secret '$SECRET_NAME' found!"
+
+        
+      - name: Update connection string
+        run: |
+          echo "Updating backend MongoDB URI"
+          SECRET_NAME=$(yq eval '.fullnameOverride' values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .name' values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .db' values.yaml)
+          MONGO_CONNECTION_STRING=$(kubectl get secret $SECRET_NAME -o jsonpath="{.data.connectionString\.standard}" | base64 --decode && echo)
+          yq eval '.configMaps.backendEnv.MONGODB_URI = strenv(MONGODB_URI)' -i helm/demo-app/values.yaml
+
+      - name: Commit updated values
+        run: |
+          git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
+          git add helm/demo-app/values.yaml
+          git commit -m "Update MongoDB URI in backend config"
+          git push
+
+          
