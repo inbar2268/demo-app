@@ -1,0 +1,55 @@
+name: Deploy app via Helm
+
+on:
+  push:
+    paths:
+      - 'helm/demo-app/**'
+      - '.github/workflows/deploy-demo-app.yml'
+    branches: [main]
+
+  workflow_dispatch:
+    inputs:
+      client_tag:
+        description: 'Optional: Tag for client image'
+        required: false
+      server_tag:
+        description: 'Optional: Tag for server image'
+        required: false
+
+  repository_dispatch:
+    types: [mongo-deploy]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        
+      - name: Update image tags if provided
+        env:
+          CLIENT_TAG: ${{ github.event.inputs.client_tag }}
+          SERVER_TAG: ${{ github.event.inputs.server_tag }}
+        run: |
+          set -e
+          if [ -n "$CLIENT_TAG" ]; then
+            echo "Updating client tag to $CLIENT_TAG"
+            yq eval ".frontend.image.tag = \"$CLIENT_TAG\"" -i helm/demo-app/values.yaml
+          fi
+
+          if [ -n "$SERVER_TAG" ]; then
+            echo "Updating server tag to $SERVER_TAG"
+            yq eval ".backend.image.tag = \"$SERVER_TAG\"" -i helm/demo-app/values.yaml
+          fi
+
+      - name: Run helm upgrade
+        run: |
+          helm upgrade --install demo-app \
+            helm/demo-app \
+            --namespace demo-nodejs \
+            --create-namespace \
+            -f helm/demo-app/values.yaml
