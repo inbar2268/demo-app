@@ -41,18 +41,21 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
           else
-            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+            TAG=${GITHUB_SHA::7}
+            echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+            echo "IMAGE_TAG=$TAG" >> $GITHUB_OUTPUT
           fi
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
           if [ -n "${{ github.event.inputs.image_name }}" ]; then
             echo "IMAGE_NAME=${{ github.event.inputs.image_name }}" >> $GITHUB_ENV
+            echo "IMAGE_NAME=${{ github.event.inputs.image_name }}" >> $GITHUB_OUTPUT
           else
             echo "IMAGE_NAME=client-app" >> $GITHUB_ENV
+            echo "IMAGE_NAME=client-app" >> $GITHUB_OUTPUT
           fi
-          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_OUTPUT
-
+          
       - name: Build Docker image
         run: |
           echo "Building image: $IMAGE_NAME:$IMAGE_TAG"
