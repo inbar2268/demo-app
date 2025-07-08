@@ -69,7 +69,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add ./helm/charts/client/values.yaml
+          git add ./helm/demo-app/values.yaml
           git diff --staged --quiet || git commit -m "Update client image tag to $IMAGE_TAG"
           git push
           
