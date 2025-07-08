@@ -1,0 +1,57 @@
+# .github/workflows/mongodb-deploy.yml
+name: Deploy mongo Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'helm/mongodb-community/**'
+      - '.github/workflows/mongodb-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'helm/mongodb-community/**'
+      - '.github/workflows/mongodb-deploy.yml'
+      
+  workflow_dispatch: {}
+
+jobs:
+  deploy-mongo:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SOPS
+        run: |
+          mkdir -p ~/.config/sops/age/
+          echo "${{ secrets.SOPS_AGE_KEY }}" > ~/.config/sops/age/keys.txt
+          chmod 600 ~/.config/sops/age/keys.txt
+
+      - name: Deploy with Helm
+        run: |
+           helm secrets upgrade --install mongodb \
+            helm/mongodb-community \
+            --namespace demo-nodejs \
+            --create-namespace \
+            -f  values.yaml -f secrets.yaml 
+
+
+  # trigger-app-deploy:
+  #   runs-on: self-hosted
+  #   needs: deploy-mongo
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: Trigger application deployment
+  #       uses: peter-evans/repository-dispatch@v3
+  #       with:
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         event-type: deploy
+  #         client_payload: |
+  #           {
+  #             "triggered_by": "mongodb-deploy"
+  #           }
