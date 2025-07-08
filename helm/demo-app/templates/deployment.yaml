@@ -26,11 +26,13 @@ spec:
         {{- end }}
       annotations:
         {{- if $service.configMaps.env.configMapRef }}
-        checksum/config-env: {{ include (print $.Template.BasePath "/configmap-" $service.configMaps.env.configMapRef ".yaml") $root | sha256sum }}
+        {{- $configMapData := index $root.Values.configMaps $service.configMaps.env.configMapRef }}
+        checksum/config-env: {{ $configMapData | toYaml | sha256sum }}
         {{- end }}
         {{- if $service.configMaps.files }}
         {{- range $name, $config := $service.configMaps.files }}
-        checksum/config-file-{{ $name }}: {{ include (print $.Template.BasePath "/configmap-" $config.configMapName ".yaml") $root | sha256sum }}
+        {{- $fileConfigData := index $root.Values.configMaps $config.configMapName }}
+        checksum/config-file-{{ $name }}: {{ $fileConfigData | toYaml | sha256sum }}
         {{- end }}
         {{- end }}
     spec:
