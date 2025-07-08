@@ -50,7 +50,7 @@ jobs:
 
       - name: Wait for MongoDB Secret
         run: |
-          SECRET_NAME=$(yq eval '.fullnameOverride' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .name' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .db' helm/mongodb-community/values.yaml)
+          SECRET_NAME=$(yq eval '.fullnameOverride' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .db' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .name' helm/mongodb-community/values.yaml)
           NAMESPACE=demo-nodejs
           TIMEOUT=60  # seconds
           ELAPSED=0
@@ -70,7 +70,7 @@ jobs:
       - name: Update connection string
         run: |
           echo "Updating backend MongoDB URI"
-          SECRET_NAME=$(yq eval '.fullnameOverride' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .name' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .db' helm/mongodb-community/values.yaml)
+          SECRET_NAME=$(yq eval '.fullnameOverride' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .db' helm/mongodb-community/values.yaml)-$(yq eval '.users[] | select(.db != "admin") | .name' helm/mongodb-community/values.yaml)
           MONGO_CONNECTION_STRING=$(kubectl get secret $SECRET_NAME -o jsonpath="{.data.connectionString\.standard}" | base64 --decode && echo)
           yq eval '.configMaps.backendEnv.MONGODB_URI = strenv(MONGODB_URI)' -i helm/demo-app/values.yaml
 
