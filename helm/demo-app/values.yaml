@@ -17,7 +17,7 @@ frontend:
   enabled: true
   image:
     repository: "client-app"
-    tag: "945202b"
+    tag: "99682a8"
     pullPolicy: IfNotPresent
   replicaCount: 1
   resources:
