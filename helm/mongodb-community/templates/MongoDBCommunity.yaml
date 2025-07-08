@@ -12,7 +12,7 @@ spec:
   users:
   {{- range $i, $user := .Values.users }}
     - name: {{ $user.name }}
-      db: {{ $user.name }}
+      db: {{ $user.db }}
       passwordSecretRef:
         name: {{ printf "s-mongo-%s-password" $user.name | trunc 63 | trimSuffix "-" }}
       roles:
