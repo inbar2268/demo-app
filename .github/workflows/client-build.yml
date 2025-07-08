@@ -18,6 +18,9 @@ on:
       image_tag:
         description: 'Docker Image Tag (e.g., v1.2.3)'
         required: true
+      image_name:
+        description: 'Optional: Docker Image Repository (client-app)'
+        required: false
 
 jobs:
   build:
@@ -25,6 +28,7 @@ jobs:
     
     outputs:
       image-tag: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+      image-name: ${{ steps.set-tag.outputs.IMAGE_NAME }}
       
     steps:
       - name: Checkout code
@@ -34,6 +38,8 @@ jobs:
         uses: docker/setup-buildx-action@v3
           
       - name: Set IMAGE_TAG
+        env:
+          IMAGE_NAME: ${{ needs.build.outputs.image-name }}
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
@@ -42,10 +48,17 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
+          if [ -n "${{ github.event.inputs.image_name }}" ]; then
+            echo "IMAGE_NAME=${{ github.event.inputs.image_name }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_NAME=client-app" >> $GITHUB_ENV
+          fi
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
       - name: Build Docker image
         run: |
-          echo "Building image with tag: $IMAGE_TAG"
-          docker build -t client-app:$IMAGE_TAG ./client
+          echo "Building image: $IMAGE_NAME:$IMAGE_TAG"
+          docker build -t $IMAGE_NAME:$IMAGE_TAG ./client
       
           
   # Update Helm Chart Values
@@ -61,9 +74,11 @@ jobs:
       - name: Update Helm values
         env:
           IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_NAME: ${{ needs.build.outputs.image-name }}
         run: |
           echo "Updating values.yaml with tag: $IMAGE_TAG"
           yq eval '.frontend.image.tag = strenv(IMAGE_TAG)' -i helm/demo-app/values.yaml
+          yq eval '.frontend.image.repository = strenv(IMAGE_NAME)' -i helm/demo-app/values.yaml
 
       - name: Commit changes
         run: |
