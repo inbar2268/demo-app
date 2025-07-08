@@ -1,0 +1,91 @@
+# .github/workflows/client-build.yml
+name: Client Build Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/client-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/client-build.yml'
+      
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker Image Tag (e.g., v1.2.3)'
+        required: true
+
+jobs:
+  build:
+    runs-on: self-hosted
+    
+    outputs:
+      image-tag: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+          
+      - name: Set IMAGE_TAG
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+      - name: Build Docker image
+        run: |
+          echo "Building image with tag: $IMAGE_TAG"
+          docker build -t client-app:$IMAGE_TAG ./client
+      
+          
+  # Update Helm Chart Values
+  update-chart:
+    runs-on: self-hosted
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+          
+      - name: Update Helm values
+        run: |
+          echo "Updating values.yaml with tag: ${{ needs.build.outputs.image-tag }}"
+          sed -i "s|tag: .*|tag: \"$IMAGE_TAG\"|g" ./helm/charts/client/values.yaml
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./helm/charts/client/values.yaml
+          git diff --staged --quiet || git commit -m "Update client image tag to $IMAGE_TAG"
+          git push
+          
+  # Trigger Deployment
+  trigger-deployment:
+    runs-on: ubuntu-latest
+    needs: [build, update-chart]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Trigger deployment workflow
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: client-deploy
+          client-payload: |
+            {
+              "image_tag": "${{ needs.build.outputs.image-tag }}",
+              "triggered_by": "${{ github.actor }}",
+              "commit_sha": "${{ github.sha }}"
+            }
