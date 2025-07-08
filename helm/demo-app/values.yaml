@@ -3,27 +3,23 @@ global:
   fullnameOverride: demo
   nameOverride: ""
   env: development
-
-# ConfigMaps definition (best practice: separate from component config)
+# ConfigMaps definition
 configMaps:
   # Frontend environment variables
   frontendEnv:
     REACT_APP_API_URL: "/api"
-    
   # Backend environment variables  
   backendEnv:
     MONGODB_URI: "mongodb://app-user:demo12@demo-mongodb-0.demo-mongodb-svc.demo-nodejs.svc.cluster.local:27017,demo-mongodb-1.demo-mongodb-svc.demo-nodejs.svc.cluster.local:27017,demo-mongodb-2.demo-mongodb-svc.demo-nodejs.svc.cluster.local:27017/demo?replicaSet=demo-mongodb&ssl=false"
-
 frontend:
   labels:
     app: client
   enabled: true
   image:
-    repository: client-app
-    tag: "v0.4"
+    repository: "client-demo"
+    tag: "v0.0.1"
     pullPolicy: IfNotPresent
   replicaCount: 1
-  
   resources:
     limits:
       cpu: 100m
@@ -31,46 +27,39 @@ frontend:
     requests:
       cpu: 50m
       memory: 64Mi
-      
   service:
     type: ClusterIP
     port: 80
-    
   livenessProbe:
     httpGet:
-      path: /health  # Use the health endpoint from nginx config
+      path: /health # Use the health endpoint from nginx config
       port: 80
     initialDelaySeconds: 30
     periodSeconds: 10
-    
   readinessProbe:
     httpGet:
       path: /health
       port: 80
     initialDelaySeconds: 5
     periodSeconds: 5
-  
   # ConfigMap references (best practice)
   configMaps:
     env:
       configMapRef: frontend-env
-    
     files:
       nginx-config:
         mountPath: /etc/nginx/conf.d/default.conf
         configMapName: nginx-config
         subPath: nginx.conf
-
 backend:
   enabled: true
   labels:
     app: server
   image:
     repository: server-app
-    tag: "v0.1"
+    tag: "4ee1aed"
     pullPolicy: IfNotPresent
   replicaCount: 1
-  
   resources:
     limits:
       cpu: 500m
@@ -78,27 +67,23 @@ backend:
     requests:
       cpu: 250m
       memory: 256Mi
-      
   service:
     type: ClusterIP
     port: 5000
-  
   # ConfigMap reference for environment variables
   configMaps:
     env:
       configMapRef: backend-env
-
 ingress:
   enabled: true
   className: "nginx"
-  
   hosts:
     - host: demo.local
       paths:
         - path: /
           pathType: Prefix
           service: frontend
-        # Optional: Direct backend access (if needed)
-        # - path: /api
-        #   pathType: Prefix
-        #   service: backend
+          # Optional: Direct backend access (if needed)
+          # - path: /api
+          #   pathType: Prefix
+          #   service: backend

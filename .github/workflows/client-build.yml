@@ -1,0 +1,97 @@
+# .github/workflows/client-build.yml
+name: Client Build Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/client-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'client/**'
+      - '.github/workflows/client-build.yml'
+      
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker Image Tag (e.g., v1.2.3)'
+        required: true
+      image_name:
+        description: 'Optional: Docker Image Repository (client-app)'
+        required: false
+
+jobs:
+  build:
+    runs-on: self-hosted
+    
+    outputs:
+      image-tag: ${{ steps.set-tag.outputs.IMAGE_TAG }}
+      image-name: ${{ steps.set-tag.outputs.IMAGE_NAME }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+          
+      - name: Set IMAGE_TAG and IMAGE_NAME
+        id: set-tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            TAG=${GITHUB_SHA::7}
+            echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+            echo "IMAGE_TAG=$TAG" >> $GITHUB_OUTPUT
+          fi
+          
+          if [ -n "${{ github.event.inputs.image_name }}" ]; then
+            echo "IMAGE_NAME=${{ github.event.inputs.image_name }}" >> $GITHUB_ENV
+            echo "IMAGE_NAME=${{ github.event.inputs.image_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "IMAGE_NAME=client-app" >> $GITHUB_ENV
+            echo "IMAGE_NAME=client-app" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Build Docker image
+        run: |
+          echo "Building image: $IMAGE_NAME:$IMAGE_TAG"
+          docker build -t $IMAGE_NAME:$IMAGE_TAG ./client
+      
+          
+  # Update Helm Chart Values
+  update-chart:
+    runs-on: self-hosted
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          
+      - name: Update Helm values
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_NAME: ${{ needs.build.outputs.image-name }}
+        run: |
+          echo "Updating values.yaml with tag: $IMAGE_TAG"
+          yq eval '.frontend.image.tag = strenv(IMAGE_TAG)' -i helm/demo-app/values.yaml
+          yq eval '.frontend.image.repository = strenv(IMAGE_NAME)' -i helm/demo-app/values.yaml
+
+      - name: Commit changes
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          IMAGE_NAME: ${{ needs.build.outputs.image-name }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./helm/demo-app/values.yaml
+          git diff --staged --quiet || git commit -m "Update client image $IMAGE_NAME:$IMAGE_TAG"
+          git push
+          
