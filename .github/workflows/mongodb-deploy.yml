@@ -35,7 +35,7 @@ jobs:
             helm/mongodb-community \
             --namespace demo-nodejs \
             --create-namespace \
-            -f  values.yaml -f secrets.yaml 
+            -f  helm/mongodb-community/values.yaml -f helm/mongodb-community/secrets.yaml 
 
 
   # trigger-app-deploy:
