@@ -3,7 +3,7 @@ global:
   fullnameOverride: demo
   nameOverride: ""
   env: development
-# ConfigMaps definition (best practice: separate from component config)
+# ConfigMaps definition
 configMaps:
   # Frontend environment variables
   frontendEnv:
