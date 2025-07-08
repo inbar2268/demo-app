@@ -1,0 +1,52 @@
+# Frontend Environment ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-{{ .Values.frontend.configMaps.env.configMapRef }}
+  
+data:
+  {{- include "demo-app.frontend.env" . | nindent 2 }}
+  {{- range $key, $value := .Values.configMaps.frontendEnv }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+---
+# Backend Environment ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-{{  .Values.backend.configMaps.env.configMapRef }}
+data:
+  {{- include "demo-app.backend.env" . | nindent 2 }}
+  {{- range $key, $value := .Values.configMaps.backendEnv }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+---
+# Nginx Configuration ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-nginx-config
+data:
+  nginx.conf: |
+    server {
+        listen {{ .Values.frontend.service.port }};
+
+        location / {
+          root /usr/share/nginx/html;
+          index index.html index.htm;
+          try_files $uri /index.html;
+        }
+
+        location /api/ {
+          proxy_pass http://{{ include "demo-app.backend.serviceName" . }}.{{ .Values.global.namespace | default .Release.Namespace }}.svc.cluster.local:{{ .Values.backend.service.port }}/api/;          
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+        }
+
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+      }

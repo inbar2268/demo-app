@@ -1,0 +1,22 @@
+nameOverride: ""
+fullnameOverride: "demo-mongodb"
+
+replicaCount: 3
+version: "6.0.5"
+
+users:
+  - name: my-user
+    db: admin
+    roles:
+      - name: clusterAdmin
+        db: admin
+      - name: userAdminAnyDatabase
+        db: admin
+  - name: app-user
+    db: demo
+    roles:
+      - name: readWrite
+        db: demo
+
+additionalMongodConfig: |
+  storage.wiredTiger.engineConfig.journalCompressor: zlib

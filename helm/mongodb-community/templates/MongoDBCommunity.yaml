@@ -1,0 +1,26 @@
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: {{ include "mongodb-community.fullname" . }}
+spec:
+  members: {{ .Values.replicaCount }}
+  type: ReplicaSet
+  version: {{ .Values.version }}
+  security:
+    authentication:
+      modes: ["SCRAM"]
+  users:
+  {{- range $i, $user := .Values.users }}
+    - name: {{ $user.name }}
+      db: {{ $user.name }}
+      passwordSecretRef:
+        name: {{ printf "s-mongo-%s-password" $user.name | trunc 63 | trimSuffix "-" }}
+      roles:
+      {{- range $role := $user.roles }}
+        - name: {{ $role.name }}
+          db: {{ $role.db }}
+      {{- end }}
+      scramCredentialsSecretName: {{ printf "s-mongo-%s" $user.name | trunc 63 | trimSuffix "-" }}
+  {{- end }}
+  additionalMongodConfig: 
+{{ .Values.additionalMongodConfig | indent 4 }}
